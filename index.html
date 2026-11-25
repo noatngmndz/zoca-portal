@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zoca | Portal de monitoreo</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='60 34 56 64'%3E%3Crect x='60' y='34' width='56' height='64' rx='8' fill='%231B3320'/%3E%3Cg fill='none' stroke='%23F5F0E0' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M70 92h36M76 92v-10h24v10M76 82l4-3h16l4 3M88 79V50M88 62c-10 0-16-6-16-14 9 0 16 5 16 14zM88 56c10 0 16-6 16-14-9 0-16 5-16 14z'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Cormorant+SC:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --green-900: #1B3320; --green-800: #213D27; --green-700: #2D4A2D; --sage: #7C9A6E;
+    --cream: #F5F0E0; --cream-dark: #ECE5CF; --ivory: #FBF8EF;
+    --gold: #B98A4A; --red: #A2452F;
+    --text: #1E2A1F; --muted: #5E6B5F; --line: rgba(45,74,45,.16);
+    --serif: 'Cormorant Garamond', Georgia, serif; --sc: 'Cormorant SC', 'Cormorant Garamond', Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: var(--serif); font-size: 18px; color: var(--text); background: var(--cream); -webkit-font-smoothing: antialiased; }
+  button, input, select { font-family: var(--serif); font-size: 17px; }
+  button { cursor: pointer; }
+  .sc { font-family: var(--sc); letter-spacing: .08em; }
+  .hidden { display: none !important; }
+
+  /* LOGIN */
+  .login { min-height: 100vh; display: grid; grid-template-columns: 1.1fr 1fr; }
+  .login-art { background: var(--green-900); color: var(--cream); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 60px; position: relative; }
+  .login-art .name { font-family: var(--sc); font-size: clamp(64px, 8vw, 112px); letter-spacing: .14em; padding-left: .14em; line-height: 1; margin-top: 18px; }
+  .login-art .tag { font-family: var(--sc); letter-spacing: .26em; font-size: 17px; color: rgba(245,240,224,.75); margin-top: 16px; }
+  .login-art .quote { font-style: italic; font-size: 22px; max-width: 420px; margin-top: 40px; color: rgba(245,240,224,.82); line-height: 1.45; }
+  .login-art .foot { position: absolute; bottom: 28px; font-size: 14px; font-style: italic; color: rgba(245,240,224,.45); }
+  .login-form { display: flex; align-items: center; justify-content: center; padding: 60px 40px; background: var(--ivory); }
+  .login-box { width: 100%; max-width: 400px; }
+  .login-box h1 { font-family: var(--sc); font-weight: 500; font-size: 40px; color: var(--green-900); margin: 0 0 6px; letter-spacing: .05em; }
+  .login-box p.sub { font-style: italic; color: var(--muted); margin: 0 0 34px; font-size: 19px; }
+  .field { margin-bottom: 20px; }
+  .field label { display: block; font-family: var(--sc); letter-spacing: .1em; font-size: 15px; color: var(--green-700); margin-bottom: 7px; }
+  .field input { width: 100%; padding: 13px 14px; border: 1px solid rgba(45,74,45,.3); background: #fff; border-radius: 0; font-size: 18px; color: var(--text); }
+  .field input:focus { outline: none; border-color: var(--green-900); }
+  .btn { display: inline-block; padding: 13px 28px; border: 1px solid var(--green-900); background: var(--green-900); color: var(--cream); font-family: var(--sc); letter-spacing: .12em; font-size: 16px; border-radius: 0; transition: all .2s; }
+  .btn:hover { background: var(--green-700); }
+  .btn-ghost { background: transparent; color: var(--green-900); }
+  .btn-ghost:hover { background: var(--green-900); color: var(--cream); }
+  .btn-block { width: 100%; }
+  .err { color: var(--red); font-size: 16px; min-height: 22px; margin: 4px 0 10px; }
+  .hint { margin-top: 26px; padding: 14px 16px; border: 1px dashed rgba(185,138,74,.6); font-size: 15px; color: var(--muted); }
+  .hint strong { color: var(--green-900); font-weight: 600; }
+
+  /* APP SHELL */
+  .top { position: sticky; top: 0; z-index: 50; background: var(--green-900); color: var(--cream); height: 70px; display: flex; align-items: center; justify-content: space-between; padding: 0 36px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand span { font-family: var(--sc); font-size: 24px; letter-spacing: .18em; }
+  .brand small { font-style: italic; font-size: 15px; color: rgba(245,240,224,.6); margin-left: 6px; }
+  .tabs { display: flex; gap: 6px; }
+  .tab { background: none; border: none; color: rgba(245,240,224,.75); font-family: var(--sc); letter-spacing: .1em; font-size: 17px; padding: 8px 14px; border-bottom: 1px solid transparent; }
+  .tab:hover { color: #fff; }
+  .tab.active { color: #fff; border-bottom-color: var(--gold); }
+  .top-right { display: flex; align-items: center; gap: 18px; font-size: 15px; }
+  .live { display: flex; align-items: center; gap: 8px; color: rgba(245,240,224,.75); font-style: italic; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sage); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+  .avatar { width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(245,240,224,.5); display: flex; align-items: center; justify-content: center; font-family: var(--sc); font-size: 15px; background: transparent; color: var(--cream); }
+
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 44px 36px 80px; }
+  .page { display: none; animation: fade .25s ease; }
+  .page.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
+  .kicker { font-family: var(--sc); color: var(--gold); letter-spacing: .16em; font-size: 16px; }
+  .h1 { font-family: var(--sc); font-weight: 500; font-size: 44px; color: var(--green-900); margin: 4px 0 6px; letter-spacing: .04em; }
+  .lead { font-style: italic; color: var(--muted); font-size: 20px; margin: 0 0 32px; }
+  .card { background: var(--ivory); border: 1px solid var(--line); padding: 26px 28px; }
+  .card h3 { font-family: var(--sc); font-weight: 500; font-size: 22px; color: var(--green-900); margin: 0 0 16px; letter-spacing: .06em; }
+  .grid { display: grid; gap: 18px; }
+  .g2 { grid-template-columns: 1fr 1fr; } .g3 { grid-template-columns: repeat(3,1fr); } .g4 { grid-template-columns: repeat(4,1fr); } .g5 { grid-template-columns: repeat(5,1fr); }
+  .mt { margin-top: 18px; }
+
+  /* HERO STATUS */
+  .hero { background: var(--green-900); color: var(--cream); padding: 30px 34px; display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 30px; align-items: center; }
+  .hero .state { font-family: var(--sc); font-size: 46px; line-height: 1; color: var(--cream); }
+  .hero .desc { font-style: italic; color: rgba(245,240,224,.75); margin-top: 8px; }
+  .hero .big { font-family: var(--sc); font-size: 44px; color: var(--gold); line-height: 1; }
+  .hero .lab { font-style: italic; color: rgba(245,240,224,.75); font-size: 16px; margin-top: 6px; }
+  .hero .sep { border-left: 1px solid rgba(245,240,224,.18); padding-left: 30px; }
+  .ring { width: 14px; height: 14px; border-radius: 50%; display: inline-block; margin-right: 10px; vertical-align: middle; }
+
+  /* METRIC CARDS */
+  .metric { background: var(--ivory); border: 1px solid var(--line); padding: 20px 22px; cursor: pointer; transition: border-color .2s; }
+  .metric:hover { border-color: var(--green-700); }
+  .metric .name { font-family: var(--sc); letter-spacing: .1em; font-size: 15px; color: var(--muted); }
+  .metric .val { font-family: var(--sc); font-size: 40px; color: var(--green-900); line-height: 1.1; margin-top: 6px; }
+  .metric .val small { font-size: 18px; color: var(--muted); }
+  .bar { height: 3px; background: var(--cream-dark); margin: 12px 0 10px; }
+  .bar i { display: block; height: 100%; background: var(--sage); transition: width .6s, background .3s; }
+  .pill { display: inline-block; font-size: 14px; font-style: italic; padding: 2px 10px; border: 1px solid; }
+  .ok { color: #3F6A3A; border-color: rgba(63,106,58,.45); }
+  .warn { color: #8A6227; border-color: rgba(185,138,74,.6); }
+  .bad { color: var(--red); border-color: rgba(162,69,47,.5); }
+  .c-ok { background: #5E8A57; } .c-warn { background: var(--gold); } .c-bad { background: var(--red); }
+
+  canvas { width: 100%; display: block; }
+  .row-between { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .small { font-size: 15px; color: var(--muted); font-style: italic; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-family: var(--sc); font-weight: 500; letter-spacing: .08em; color: var(--gold); font-size: 15px; padding: 9px 10px; border-bottom: 1px solid var(--green-700); }
+  td { padding: 12px 10px; border-bottom: 1px solid var(--line); font-size: 17px; vertical-align: top; }
+  td .sub { display: block; font-size: 14px; color: var(--muted); font-style: italic; }
+
+  /* SENSOR DETAIL */
+  .sensor { background: var(--ivory); border: 1px solid var(--line); padding: 24px 26px; }
+  .sensor-head { display: flex; justify-content: space-between; align-items: flex-start; }
+  .sensor-name { font-family: var(--sc); font-size: 24px; color: var(--green-900); letter-spacing: .06em; }
+  .sensor-val { font-family: var(--sc); font-size: 52px; color: var(--green-900); line-height: 1; margin: 12px 0 14px; }
+  .sensor-val small { font-size: 20px; color: var(--muted); }
+  .kv { display: flex; justify-content: space-between; padding: 8px 0; border-top: 1px solid var(--line); font-size: 16px; }
+  .kv span:first-child { color: var(--muted); }
+
+  /* ALERTS */
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .fbtn { background: transparent; border: 1px solid var(--line); padding: 7px 18px; font-family: var(--sc); letter-spacing: .08em; font-size: 15px; color: var(--green-900); border-radius: 0; }
+  .fbtn.active { background: var(--green-900); color: var(--cream); border-color: var(--green-900); }
+  .alert-row { display: grid; grid-template-columns: 14px 1fr 120px 110px; gap: 16px; align-items: center; padding: 16px 4px; border-bottom: 1px solid var(--line); }
+  .alert-row .t { font-size: 18px; }
+  .alert-row .d { font-size: 15px; color: var(--muted); font-style: italic; }
+  .alert-row .time { font-size: 15px; color: var(--muted); text-align: right; }
+
+  /* LICENSE CARD */
+  .license { background: var(--green-900); color: var(--cream); padding: 34px 36px; position: relative; overflow: hidden; border: 1px solid var(--gold); outline: 1px solid rgba(185,138,74,.35); outline-offset: -10px; }
+  .license .lk { font-family: var(--sc); letter-spacing: .22em; font-size: 14px; color: var(--gold); }
+  .license .ln { font-family: var(--sc); font-size: 34px; letter-spacing: .12em; margin: 14px 0 4px; }
+  .license .lo { font-style: italic; color: rgba(245,240,224,.8); font-size: 18px; }
+  .license .lgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; margin-top: 26px; font-size: 16px; }
+  .license .lgrid div span { display: block; font-family: var(--sc); letter-spacing: .12em; font-size: 13px; color: rgba(245,240,224,.55); }
+  .license .stamp { position: absolute; right: 28px; top: 28px; border: 1px solid var(--gold); color: var(--gold); font-family: var(--sc); letter-spacing: .16em; font-size: 13px; padding: 6px 12px; }
+  .license .mark { position: absolute; right: -10px; bottom: -14px; opacity: .1; }
+
+  /* PROFILE */
+  .prow { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); gap: 14px; }
+  .prow .k { color: var(--muted); font-size: 16px; }
+  .prow .v { font-size: 18px; }
+  .link { background: none; border: none; color: var(--gold); font-style: italic; text-decoration: underline; text-underline-offset: 3px; font-size: 16px; padding: 0; }
+  .switch { width: 44px; height: 24px; border-radius: 12px; background: var(--cream-dark); border: 1px solid var(--line); position: relative; flex: 0 0 auto; transition: background .2s; }
+  .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: left .2s; }
+  .switch.on { background: var(--green-700); }
+  .switch.on::after { left: 22px; }
+  .plan-opt { border: 1px solid var(--line); padding: 16px 18px; cursor: pointer; background: #fff; }
+  .plan-opt.sel { border-color: var(--green-900); outline: 1px solid var(--green-900); }
+  .plan-opt .pn { font-family: var(--sc); font-size: 22px; color: var(--green-900); }
+  .plan-opt .pp { color: var(--gold); font-family: var(--sc); font-size: 20px; }
+  .plan-opt .pd { font-size: 15px; color: var(--muted); font-style: italic; }
+
+  /* MODAL */
+  .modal { position: fixed; inset: 0; background: rgba(20,38,24,.6); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  .modal.open { display: flex; }
+  .modal-box { background: var(--ivory); border-top: 3px solid var(--gold); padding: 34px 36px; width: 100%; max-width: 440px; }
+  .modal-box h3 { font-family: var(--sc); font-weight: 500; font-size: 28px; color: var(--green-900); margin: 0 0 18px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--green-900); color: var(--cream); padding: 12px 22px; font-style: italic; opacity: 0; transition: all .3s; z-index: 200; }
+  .toast.show { opacity: 1; transform: translateX(-50%); }
+
+  @media (max-width: 1000px) {
+    .login { grid-template-columns: 1fr; } .login-art { min-height: 40vh; }
+    .g4, .g5 { grid-template-columns: 1fr 1fr; } .g3, .g2, .hero { grid-template-columns: 1fr; }
+    .hero .sep { border-left: none; padding-left: 0; border-top: 1px solid rgba(245,240,224,.18); padding-top: 20px; }
+    .top { padding: 0 16px; } .tabs { display: none; } .mtabs { display: flex !important; }
+    .brand small, .live { display: none; }
+    .wrap { padding: 30px 18px 90px; }
+    .alert-row { grid-template-columns: 14px 1fr; } .alert-row .time, .alert-row .pill { grid-column: 2; text-align: left; }
+  }
+  .mtabs { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--green-900); z-index: 60; justify-content: space-around; padding: 6px 0; }
+  .mtabs .tab { font-size: 14px; padding: 10px 6px; }
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<section class="login" id="loginView">
+  <div class="login-art">
+    <svg width="90" height="90" viewBox="66 40 44 58" fill="none" stroke="#F5F0E0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M70 92h36"/><path d="M76 92v-10h24v10"/><path d="M76 82l4-3h16l4 3"/><path d="M88 79V50"/><path d="M88 62c-10 0-16-6-16-14 9 0 16 5 16 14z"/><path d="M88 56c10 0 16-6 16-14-9 0-16 5-16 14z"/></svg>
+    <div class="name">Zoca</div>
+    <div class="tag">Portal de monitoreo</div>
+    <div class="quote">Tu cosecha, a la temperatura correcta, desde tu celular.</div>
+    <div class="foot">zoca-babson.vercel.app</div>
+  </div>
+  <div class="login-form">
+    <div class="login-box">
+      <h1>Iniciar sesión</h1>
+      <p class="sub">Entra con el número de licencia que viene con tu kit.</p>
+      <div class="field">
+        <label for="lic">Número de licencia</label>
+        <input id="lic" placeholder="ZCA-2026-00000" autocomplete="username" autocapitalize="characters">
+      </div>
+      <div class="field">
+        <label for="pwd">Contraseña</label>
+        <input id="pwd" type="password" autocomplete="current-password">
+      </div>
+      <div class="err" id="loginErr"></div>
+      <button class="btn btn-block" id="loginBtn" onclick="doLogin()">Entrar</button>
+      <div class="hint" id="demoHint">Modo demo. Licencia <strong>ZCA-2026-01847</strong>, contraseña <strong>zoca2026</strong>.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= APP ================= -->
+<div id="appView" class="hidden">
+  <header class="top">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="66 40 44 58" fill="none" stroke="#F5F0E0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M70 92h36"/><path d="M76 92v-10h24v10"/><path d="M76 82l4-3h16l4 3"/><path d="M88 79V50"/><path d="M88 62c-10 0-16-6-16-14 9 0 16 5 16 14z"/><path d="M88 56c10 0 16-6 16-14-9 0-16 5-16 14z"/></svg>
+      <span>Zoca</span><small>Portal de monitoreo</small>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-p="dashboard">Dashboard</button>
+      <button class="tab" data-p="sensores">Sensores</button>
+      <button class="tab" data-p="alertas">Alertas</button>
+      <button class="tab" data-p="kit">Mi Kit</button>
+      <button class="tab" data-p="perfil">Perfil</button>
+    </nav>
+    <div class="top-right">
+      <div class="live"><span class="dot"></span>En vivo · <span id="clock">--:--</span></div>
+      <button class="avatar" id="avatar" data-p="perfil" title="Perfil">--</button>
+    </div>
+  </header>
+  <nav class="mtabs" id="mtabs">
+    <button class="tab active" data-p="dashboard">Inicio</button>
+    <button class="tab" data-p="sensores">Sensores</button>
+    <button class="tab" data-p="alertas">Alertas</button>
+    <button class="tab" data-p="kit">Mi Kit</button>
+    <button class="tab" data-p="perfil">Perfil</button>
+  </nav>
+
+  <main class="wrap">
+
+    <!-- DASHBOARD -->
+    <section class="page active" id="p-dashboard">
+      <div class="kicker" id="dFinca">Finca</div>
+      <div class="h1">Hola, <span id="dName">--</span></div>
+      <p class="lead">Así está tu cámara en este momento.</p>
+
+      <div class="hero">
+        <div>
+          <div class="small" style="color:rgba(245,240,224,.6)">Estado de la cámara</div>
+          <div class="state"><span class="ring c-ok" id="stRing"></span><span id="stText">Óptimo</span></div>
+          <div class="desc" id="stDesc">Todos los parámetros en rango</div>
+        </div>
+        <div class="sep">
+          <div class="big"><span id="hKg">54</span> kg</div>
+          <div class="lab">de <span id="hProd">mora</span> salvados este mes</div>
+        </div>
+        <div class="sep">
+          <div class="big" id="hUsd">$32</div>
+          <div class="lab">USD en pérdidas evitadas</div>
+        </div>
+      </div>
+
+      <div class="grid g5 mt">
+        <div class="metric" data-goto="sensores"><div class="name">Temperatura</div><div class="val"><span id="mT">--</span><small> °C</small></div><div class="bar"><i id="bT"></i></div><span class="pill ok" id="sT">Óptimo</span></div>
+        <div class="metric" data-goto="sensores"><div class="name">Humedad</div><div class="val"><span id="mH">--</span><small> %</small></div><div class="bar"><i id="bH"></i></div><span class="pill ok" id="sH">Óptimo</span></div>
+        <div class="metric" data-goto="sensores"><div class="name">CO2</div><div class="val"><span id="mC">--</span><small> ppm</small></div><div class="bar"><i id="bC"></i></div><span class="pill ok" id="sC">Óptimo</span></div>
+        <div class="metric" data-goto="sensores"><div class="name">Etileno</div><div class="val"><span id="mE">--</span><small> ppb</small></div><div class="bar"><i id="bE"></i></div><span class="pill ok" id="sE">Maduración normal</span></div>
+        <div class="metric" data-goto="sensores"><div class="name">Puerta</div><div class="val" id="mD" style="font-size:32px;padding:6px 0 4px">Cerrada</div><div class="bar"><i style="width:100%"></i></div><span class="pill ok" id="sD">Sellada</span></div>
+      </div>
+
+      <div class="grid g2 mt" style="grid-template-columns:1.6fr 1fr">
+        <div class="card">
+          <div class="row-between"><h3>Temperatura · últimas horas</h3><span class="small">Rango ideal 4 – 8 °C</span></div>
+          <canvas id="mainChart" height="190"></canvas>
+          <div class="row-between small" style="margin-top:10px"><span>Mín. hoy <b id="tMin">--</b></span><span>Máx. hoy <b id="tMax">--</b></span></div>
+        </div>
+        <div class="card">
+          <h3>Ahorro del mes</h3>
+          <div class="prow"><span class="k">Producto</span><span class="v" id="aProd">Mora</span></div>
+          <div class="prow"><span class="k">Kilos salvados</span><span class="v" id="aKg">54 kg</span></div>
+          <div class="prow"><span class="k">Valor evitado</span><span class="v" id="aUsd">$32 USD</span></div>
+          <div class="prow"><span class="k">Días activa</span><span class="v">18</span></div>
+          <div class="prow" style="border:none"><span class="k">Alertas resueltas</span><span class="v">7</span></div>
+        </div>
+      </div>
+
+      <div class="grid g2 mt">
+        <div class="card">
+          <div class="row-between"><h3>Alertas recientes</h3><button class="link" data-goto="alertas">Ver todas</button></div>
+          <div id="recentAlerts"></div>
+        </div>
+        <div class="card">
+          <h3>Aperturas de puerta · hoy</h3>
+          <table><thead><tr><th>Apertura</th><th>Hora</th><th>Duración</th></tr></thead><tbody id="doorTable"></tbody></table>
+          <div class="small" style="margin-top:12px">Total: <span id="doorTotal">15</span> min abierta hoy</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SENSORES -->
+    <section class="page" id="p-sensores">
+      <div class="kicker">Módulo <span class="modulo">ZCA-ESP32-01</span></div>
+      <div class="h1">Sensores</div>
+      <p class="lead">El detalle de cada medición de tu cámara. Se actualiza cada pocos segundos.</p>
+      <div class="grid g2" id="sensorGrid"></div>
+    </section>
+
+    <!-- ALERTAS -->
+    <section class="page" id="p-alertas">
+      <div class="kicker">Historial</div>
+      <div class="h1">Alertas</div>
+      <p class="lead">Todo lo que te ha avisado la cámara. Filtra por estado.</p>
+      <div class="filters" id="filters">
+        <button class="fbtn active" data-f="todas">Todas</button>
+        <button class="fbtn" data-f="activa">Activas</button>
+        <button class="fbtn" data-f="resuelta">Resueltas</button>
+        <button class="fbtn" data-f="critica">Críticas</button>
+      </div>
+      <div class="card" style="padding-top:8px"><div id="alertList"></div></div>
+    </section>
+
+    <!-- MI KIT -->
+    <section class="page" id="p-kit">
+      <div class="kicker">Tu equipo</div>
+      <div class="h1">Mi Kit</div>
+      <p class="lead">Tu licencia, tu cámara y tu plan.</p>
+      <div class="grid g2" style="grid-template-columns:1.15fr 1fr">
+        <div class="license">
+          <div class="stamp" id="licStamp">Licencia activa</div>
+          <div class="lk">Licencia Zoca · Plan <span class="plan">Pro</span></div>
+          <div class="ln" id="licNum">ZCA-2026-01847</div>
+          <div class="lo"><span class="finca">Finca</span> · <span class="nombre">--</span></div>
+          <div class="lgrid">
+            <div><span>Emisión</span><b id="licEm">--</b></div>
+            <div><span>Vencimiento</span><b id="licVe">--</b></div>
+            <div><span>Ubicación</span><b class="depto">--</b></div>
+            <div><span>Módulo</span><b class="modulo">--</b></div>
+          </div>
+          <svg class="mark" width="190" height="190" viewBox="66 40 44 58" fill="none" stroke="#F5F0E0" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M70 92h36"/><path d="M76 92v-10h24v10"/><path d="M76 82l4-3h16l4 3"/><path d="M88 79V50"/><path d="M88 62c-10 0-16-6-16-14 9 0 16 5 16 14z"/><path d="M88 56c10 0 16-6 16-14-9 0-16 5-16 14z"/></svg>
+        </div>
+        <div class="card">
+          <h3>Tu cámara</h3>
+          <div class="prow"><span class="k">Kit</span><span class="v" id="kKit">--</span></div>
+          <div class="prow"><span class="k">Paneles</span><span class="v" id="kPan">--</span></div>
+          <div class="prow"><span class="k">Plan activo</span><span class="v"><span class="plan">Pro</span> · <span id="kPrice">$8</span> USD/mes</span></div>
+          <div class="prow"><span class="k">Firmware del módulo</span><span class="v" id="kFw">v2.3.1</span></div>
+          <div class="prow" style="border:none"><span class="k">Copias de seguridad</span><span class="v">Cada 6 horas</span></div>
+        </div>
+      </div>
+      <div class="card mt">
+        <h3>Qué trae tu kit</h3>
+        <table><thead><tr><th>Componente</th><th>Detalle</th></tr></thead><tbody id="kitTable"></tbody></table>
+      </div>
+      <div class="card mt">
+        <div class="row-between"><h3>Cambiar de plan</h3><span class="small">El cambio aplica desde el próximo mes</span></div>
+        <div class="grid g3" id="planOpts"></div>
+        <div style="margin-top:16px;text-align:right"><button class="btn" id="planBtn" disabled>Plan actual</button></div>
+      </div>
+    </section>
+
+    <!-- PERFIL -->
+    <section class="page" id="p-perfil">
+      <div class="kicker">Cuenta</div>
+      <div class="h1" id="pName">--</div>
+      <p class="lead">Agricultor · <span class="depto">--</span></p>
+      <div class="grid g2">
+        <div class="card">
+          <h3>Datos de la cuenta</h3>
+          <div class="prow"><span class="k">Nombre</span><span class="v" id="f-nombre">--</span><button class="link" data-edit="nombre" data-label="Nombre">Editar</button></div>
+          <div class="prow"><span class="k">Finca</span><span class="v" id="f-finca">--</span><button class="link" data-edit="finca" data-label="Finca">Editar</button></div>
+          <div class="prow"><span class="k">Ubicación</span><span class="v" id="f-departamento">--</span><button class="link" data-edit="departamento" data-label="Ubicación">Editar</button></div>
+          <div class="prow"><span class="k">Teléfono</span><span class="v" id="f-telefono">--</span><button class="link" data-edit="telefono" data-label="Teléfono">Editar</button></div>
+          <div class="prow" style="border:none"><span class="k">Producto principal</span><span class="v" id="f-producto">--</span><button class="link" data-edit="producto" data-label="Producto principal">Editar</button></div>
+        </div>
+        <div class="card">
+          <h3>Notificaciones</h3>
+          <div id="notifList"></div>
+        </div>
+      </div>
+      <div class="card mt">
+        <h3>Licencia y seguridad</h3>
+        <div class="prow"><span class="k">Número de licencia</span><span class="v" id="secLic">--</span><span class="pill ok">Activa</span></div>
+        <div class="prow"><span class="k">Vencimiento</span><span class="v" id="secVe">--</span><span></span></div>
+        <div class="prow"><span class="k">Contraseña</span><span class="v">••••••••</span><button class="link" id="pwdBtn">Cambiar</button></div>
+        <div class="prow" style="border:none"><span class="k">Sesión</span><span class="v small">Activa en este dispositivo</span><button class="btn btn-ghost" id="logoutBtn">Cerrar sesión</button></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal" id="editModal">
+  <div class="modal-box">
+    <h3 id="editTitle">Editar</h3>
+    <div class="field"><input id="editInput"></div>
+    <div class="field hidden" id="editInput2Wrap"><label>Repite la contraseña</label><input id="editInput2" type="password"></div>
+    <div class="err" id="editErr"></div>
+    <div class="modal-actions"><button class="btn btn-ghost" id="editCancel">Cancelar</button><button class="btn" id="editSave">Guardar</button></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const CFG = window.ZOCA_CONFIG || {};
+  const LIVE = !!(CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY && window.supabase);
+  const sb = LIVE ? window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY) : null;
+  const $ = id => document.getElementById(id);
+  const PLAN_PRICE = { 'Basico': 5, 'Básico': 5, 'Pro': 8, 'Cooperativa': 20 };
+  const DEMO = { licencia: 'ZCA-2026-01847', password: 'zoca2026', nombre: 'Carlos Hernandez', finca: 'Finca La Esperanza', departamento: 'Boyacá, Colombia', telefono: '+57 310 000 0000', kit: 'Kit Estándar', paneles: 51, plan: 'Pro', producto: 'Mora', modulo: 'ZCA-ESP32-01', firmware: 'v2.3.1', emitida: '2026-11-18', vence: '2027-11-18', notificaciones: { app: true, sms: true, diario: true, mensual: false, etileno: true, puerta: true } };
+  let user = null;
+
+  if (LIVE) $('demoHint').classList.add('hidden');
+
+  function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2400); }
+  function fmtDate(s){ if(!s) return '--'; const d=new Date(s+'T12:00:00'); return d.toLocaleDateString('es-CR',{day:'numeric',month:'short',year:'numeric'}); }
+  function licToEmail(l){ return l.trim().toLowerCase() + '@' + (CFG.LICENSE_EMAIL_DOMAIN || 'clientes.zoca.app'); }
+
+  // ---------- LOGIN ----------
+  window.doLogin = async function(){
+    const lic = $('lic').value.trim().toUpperCase(), pwd = $('pwd').value;
+    $('loginErr').textContent = '';
+    if (!lic || !pwd) { $('loginErr').textContent = 'Escribe tu número de licencia y tu contraseña.'; return; }
+    $('loginBtn').textContent = 'Entrando...';
+    try {
+      if (LIVE) {
+        const { error } = await sb.auth.signInWithPassword({ email: licToEmail(lic), password: pwd });
+        if (error) throw new Error('Licencia o contraseña incorrecta.');
+        await loadProfile();
+      } else {
+        if (lic !== DEMO.licencia || pwd !== DEMO.password) throw new Error('Licencia o contraseña incorrecta.');
+        user = JSON.parse(JSON.stringify(DEMO)); sessionStorage.setItem('zocaDemo','1');
+        enterApp();
+      }
+    } catch(e) { $('loginErr').textContent = e.message; }
+    $('loginBtn').textContent = 'Entrar';
+  };
+  ['lic','pwd'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); }));
+
+  async function loadProfile(){
+    const { data: { user: au } } = await sb.auth.getUser();
+    if (!au) return false;
+    const { data, error } = await sb.from('clientes').select('*').eq('id', au.id).single();
+    if (error || !data) { $('loginErr').textContent = 'Tu licencia no tiene datos asignados todavía. Contacta a Zoca.'; await sb.auth.signOut(); return false; }
+    user = data; enterApp(); return true;
+  }
+
+  async function logout(){
+    if (LIVE) await sb.auth.signOut();
+    sessionStorage.removeItem('zocaDemo'); user = null;
+    $('appView').classList.add('hidden'); $('loginView').classList.remove('hidden');
+    $('pwd').value = ''; location.hash = '';
+  }
+
+  // ---------- RENDER USER ----------
+  function paint(){
+    const u = user;
+    const initials = u.nombre.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+    $('avatar').textContent = initials;
+    $('dName').textContent = u.nombre.split(' ')[0];
+    $('dFinca').textContent = (u.finca||'') + ' · ' + (u.departamento||'');
+    $('pName').textContent = u.nombre;
+    document.querySelectorAll('.nombre').forEach(e=>e.textContent=u.nombre);
+    document.querySelectorAll('.finca').forEach(e=>e.textContent=u.finca||'--');
+    document.querySelectorAll('.depto').forEach(e=>e.textContent=u.departamento||'--');
+    document.querySelectorAll('.modulo').forEach(e=>e.textContent=u.modulo||'--');
+    document.querySelectorAll('.plan').forEach(e=>e.textContent=u.plan);
+    ['nombre','finca','departamento','telefono','producto'].forEach(k=>{ const el=$('f-'+k); if(el) el.textContent=u[k]||'--'; });
+    $('licNum').textContent = u.licencia; $('secLic').textContent = u.licencia;
+    $('licEm').textContent = fmtDate(u.emitida); $('licVe').textContent = fmtDate(u.vence); $('secVe').textContent = fmtDate(u.vence);
+    const expired = u.vence && new Date(u.vence) < new Date();
+    $('licStamp').textContent = expired ? 'Licencia vencida' : 'Licencia activa';
+    $('kKit').textContent = u.kit; $('kPan').textContent = u.paneles + ' paneles de lana de roca basáltica';
+    $('kPrice').textContent = '$' + (PLAN_PRICE[u.plan] || 8); $('kFw').textContent = u.firmware || 'v2.3.1';
+    $('hProd').textContent = (u.producto||'cosecha').toLowerCase(); $('aProd').textContent = u.producto || '--';
+    paintKitTable(); paintPlans(); paintNotif();
+  }
+
+  function paintKitTable(){
+    const rows = [
+      ['Paneles', user.paneles + ' paneles de 1.20 × 0.60 m · lana de roca basáltica'],
+      ['Puerta', 'Puerta aislada con sello EPDM'],
+      ['Módulo IoT', 'ESP32 con sensores de temperatura, humedad, CO2, etileno y puerta'],
+      ['Conectividad', 'Módulo 4G · guarda datos hasta 72 h sin señal'],
+      ['Energía del módulo', 'Batería con cargador solar'],
+      ['Armado', 'Encaje macho-hembra, sin herramientas especiales']
+    ];
+    if (/est/i.test(user.kit)) rows.splice(2,0,['Refrigeración','Mini split Midea 9,000 BTU 220 V'],['Piso','Piso plástico industrial (15 m²)']);
+    $('kitTable').innerHTML = rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
+  }
+
+  let planSel = null;
+  function paintPlans(){
+    const plans = [['Básico','$5','1 finca · historial 90 días · alertas por app'],['Pro','$8','1 finca · historial 1 año · alertas por SMS · calculadora de ahorro'],['Cooperativa','$20','Hasta 10 fincas · historial 1 año · soporte prioritario']];
+    const cur = user.plan === 'Basico' ? 'Básico' : user.plan;
+    planSel = cur;
+    $('planOpts').innerHTML = plans.map(p=>`<div class="plan-opt${p[0]===cur?' sel':''}" data-plan="${p[0]}"><div class="row-between"><span class="pn">${p[0]}</span><span class="pp">${p[1]}/mes</span></div><div class="pd">${p[2]}</div></div>`).join('');
+    $('planOpts').querySelectorAll('.plan-opt').forEach(el=>el.onclick=()=>{
+      planSel = el.dataset.plan;
+      $('planOpts').querySelectorAll('.plan-opt').forEach(x=>x.classList.toggle('sel', x===el));
+      const same = planSel === cur;
+      $('planBtn').disabled = same; $('planBtn').textContent = same ? 'Plan actual' : 'Cambiar a ' + planSel;
+    });
+    $('planBtn').disabled = true; $('planBtn').textContent = 'Plan actual';
+  }
+  $('planBtn').onclick = async () => {
+    const val = planSel === 'Básico' ? 'Basico' : planSel;
+    if (!(await save({ plan: val }))) return;
+    user.plan = val; paint(); toast('Listo. Tu plan cambia a ' + planSel + ' desde el próximo mes.');
+  };
+
+  const NOTIF = [['app','Alertas por app','Temperatura, humedad, CO2 y etileno'],['sms','Alertas por SMS','Solo alertas críticas (planes Pro y Cooperativa)'],['diario','Resumen diario','Reporte de 24 horas a las 7 a. m.'],['mensual','Informe mensual','PDF el primer día de cada mes'],['etileno','Alertas de etileno','Cuando se detecta maduración acelerada'],['puerta','Alertas de puerta','Si queda abierta más de 5 minutos']];
+  function paintNotif(){
+    const n = user.notificaciones || {};
+    $('notifList').innerHTML = NOTIF.map((x,i)=>`<div class="prow"${i===NOTIF.length-1?' style="border:none"':''}><div><div class="v">${x[1]}</div><div class="small">${x[2]}</div></div><button class="switch${n[x[0]]?' on':''}" data-n="${x[0]}" aria-label="${x[1]}"></button></div>`).join('');
+    $('notifList').querySelectorAll('.switch').forEach(s=>s.onclick=async()=>{
+      const k=s.dataset.n; const next=Object.assign({}, user.notificaciones||{}); next[k]=!next[k];
+      if (!(await save({ notificaciones: next }))) return;
+      user.notificaciones = next; s.classList.toggle('on', !!next[k]); toast(next[k] ? 'Notificación activada' : 'Notificación desactivada');
+    });
+  }
+
+  async function save(patch){
+    if (!LIVE) return true;
+    const { error } = await sb.from('clientes').update(patch).eq('id', user.id);
+    if (error) { toast('No se pudo guardar. Intenta de nuevo.'); return false; }
+    return true;
+  }
+
+  // ---------- EDIT MODAL ----------
+  let editKey = null;
+  function openEdit(key, label, isPwd){
+    editKey = key; $('editTitle').textContent = isPwd ? 'Cambiar contraseña' : 'Editar ' + label.toLowerCase();
+    $('editErr').textContent = '';
+    $('editInput').type = isPwd ? 'password' : 'text';
+    $('editInput').placeholder = isPwd ? 'Nueva contraseña (mínimo 8 caracteres)' : '';
+    $('editInput').value = isPwd ? '' : (user[key] || '');
+    $('editInput2Wrap').classList.toggle('hidden', !isPwd); $('editInput2').value = '';
+    $('editModal').classList.add('open'); setTimeout(()=>$('editInput').focus(), 50);
+  }
+  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEdit(b.dataset.edit, b.dataset.label, false));
+  $('pwdBtn').onclick = () => openEdit('__pwd', 'Contraseña', true);
+  $('editCancel').onclick = () => $('editModal').classList.remove('open');
+  $('editModal').onclick = e => { if (e.target === $('editModal')) $('editModal').classList.remove('open'); };
+  $('editSave').onclick = async () => {
+    const v = $('editInput').value.trim();
+    if (editKey === '__pwd') {
+      if (v.length < 8) { $('editErr').textContent = 'Usa al menos 8 caracteres.'; return; }
+      if (v !== $('editInput2').value.trim()) { $('editErr').textContent = 'Las contraseñas no coinciden.'; return; }
+      if (LIVE) { const { error } = await sb.auth.updateUser({ password: v }); if (error) { $('editErr').textContent = 'No se pudo cambiar la contraseña.'; return; } }
+      $('editModal').classList.remove('open'); toast('Contraseña actualizada'); return;
+    }
+    if (!v) { $('editErr').textContent = 'Este campo no puede quedar vacío.'; return; }
+    const patch = {}; patch[editKey] = v;
+    if (!(await save(patch))) return;
+    user[editKey] = v; paint(); $('editModal').classList.remove('open'); toast('Cambios guardados');
+  };
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') $('editModal').classList.remove('open');
+    if (e.key === 'Enter' && $('editModal').classList.contains('open')) $('editSave').click();
+  });
+  $('logoutBtn').onclick = logout;
+
+  // ---------- NAV ----------
+  const PAGES = ['dashboard','sensores','alertas','kit','perfil'];
+  function show(p){
+    if (PAGES.indexOf(p) < 0) p = 'dashboard';
+    document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active', x.id === 'p-' + p));
+    document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active', x.dataset.p === p));
+    window.scrollTo(0,0);
+    if (p === 'dashboard') drawMain();
+  }
+  document.querySelectorAll('[data-p]').forEach(b=>b.addEventListener('click', ()=>{ location.hash = b.dataset.p; }));
+  document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click', ()=>{ location.hash = b.dataset.goto; }));
+  window.addEventListener('hashchange', ()=>{ if (user) show(location.hash.slice(1)); });
+
+  function enterApp(){
+    $('loginView').classList.add('hidden'); $('appView').classList.remove('hidden');
+    paint(); show(location.hash.slice(1) || 'dashboard'); startSim();
+  }
+
+  // ---------- SIMULATED SENSORS ----------
+  const S = {
+    temp: { v: 6.2, h: [], unit: '°C', lo: 4, hi: 8, min: 99, max: -99 },
+    hum:  { v: 80,  h: [], unit: '%',  lo: 70, hi: 85, min: 999, max: -1 },
+    co2:  { v: 430, h: [], unit: 'ppm', lo: 350, hi: 600, min: 9999, max: -1 },
+    eth:  { v: 18,  h: [], unit: 'ppb', lo: 0, hi: 50, min: 9999, max: -1 }
+  };
+  for (let i = 0; i < 48; i++) {
+    S.temp.h.push(6 + Math.sin(i*.35)*1.1 + (Math.random()-.5)*.4);
+    S.hum.h.push(79 + Math.sin(i*.3)*4 + (Math.random()-.5)*2);
+    S.co2.h.push(450 + Math.sin(i*.4)*60 + (Math.random()-.5)*20);
+    S.eth.h.push(16 + Math.sin(i*.5)*6 + (Math.random()-.5)*3);
+  }
+  Object.values(S).forEach(s=>s.h.forEach(v=>{ s.min=Math.min(s.min,v); s.max=Math.max(s.max,v); }));
+  let door = false;
+
+  const SENSORS = [
+    { k:'temp', name:'Temperatura', dev:'DHT22 / SHT31', range:'4 – 8 °C', dec:1 },
+    { k:'hum',  name:'Humedad relativa', dev:'SHT31', range:'70 – 85 %', dec:0 },
+    { k:'co2',  name:'CO2', dev:'MH-Z19B', range:'350 – 600 ppm', dec:0 },
+    { k:'eth',  name:'Etileno', dev:'MQ-3 / TGS2602', range:'0 – 50 ppb · alerta de maduración > 100 ppb', dec:0 }
+  ];
+  $('sensorGrid').innerHTML = SENSORS.map(s=>`
+    <div class="sensor">
+      <div class="sensor-head"><div><div class="sensor-name">${s.name}</div><div class="small">Sensor ${s.dev}</div></div><span class="pill ok" id="ss-${s.k}">Óptimo</span></div>
+      <div class="sensor-val"><span id="sv-${s.k}">--</span><small> ${S[s.k].unit}</small></div>
+      <canvas id="sc-${s.k}" height="70"></canvas>
+      <div class="kv mt"><span>Rango ideal</span><span>${s.range}</span></div>
+      <div class="kv"><span>Mín. hoy</span><span id="smin-${s.k}">--</span></div>
+      <div class="kv"><span>Máx. hoy</span><span id="smax-${s.k}">--</span></div>
+      <div class="kv"><span>Actualizado</span><span class="upd">--</span></div>
+    </div>`).join('') + `
+    <div class="sensor">
+      <div class="sensor-head"><div><div class="sensor-name">Puerta</div><div class="small">Sensor Reed Switch</div></div><span class="pill ok" id="ss-door">Cerrada</span></div>
+      <div class="sensor-val" id="sv-door" style="font-size:40px">Cerrada</div>
+      <div class="kv"><span>Aperturas hoy</span><span id="doorCount">3</span></div>
+      <div class="kv"><span>Tiempo abierta hoy</span><span id="doorMin">15 min</span></div>
+      <div class="kv"><span>Última apertura</span><span id="doorLast">--</span></div>
+      <div class="kv"><span>Alerta</span><span>Si queda abierta más de 5 min</span></div>
+    </div>
+    <div class="sensor">
+      <div class="sensor-head"><div><div class="sensor-name">Módulo</div><div class="small">ESP32 · 4G</div></div><span class="pill ok">En línea</span></div>
+      <div class="sensor-val" style="font-size:34px"><span class="modulo">ZCA-ESP32-01</span></div>
+      <div class="kv"><span>Envío de datos</span><span>Cada 30 segundos</span></div>
+      <div class="kv"><span>Memoria sin señal</span><span>Hasta 72 horas</span></div>
+      <div class="kv"><span>Copias de seguridad</span><span>Cada 6 horas</span></div>
+      <div class="kv"><span>Energía</span><span>Batería + cargador solar</span></div>
+    </div>`;
+
+  function status(k, v){
+    if (k === 'eth') return v > 100 ? ['bad','Maduración acelerada'] : v > 50 ? ['warn','Revisar'] : ['ok','Maduración normal'];
+    const s = S[k];
+    if (v >= s.lo && v <= s.hi) return ['ok','Óptimo'];
+    const off = v < s.lo ? (s.lo - v)/(s.hi - s.lo) : (v - s.hi)/(s.hi - s.lo);
+    return off > .35 ? ['bad', v < s.lo ? 'Muy bajo' : 'Muy alto'] : ['warn', v < s.lo ? 'Bajo' : 'Alto'];
+  }
+  function setPill(el, st){ if(!el) return; el.className = 'pill ' + st[0]; el.textContent = st[1]; }
+
+  function chart(id, data, lo, hi, h){
+    const c = $(id); if (!c || !c.offsetWidth) return;
+    const dpr = window.devicePixelRatio || 1, W = c.offsetWidth, H = h;
+    c.width = W*dpr; c.height = H*dpr; c.style.height = H + 'px';
+    const x = c.getContext('2d'); x.scale(dpr,dpr);
+    let mn = Math.min(...data, lo), mx = Math.max(...data, hi); const pad = (mx-mn)*.12; mn -= pad; mx += pad;
+    const y = v => H - (v - mn)/(mx - mn)*(H - 8) - 4, sx = W/(data.length - 1);
+    x.fillStyle = 'rgba(124,154,110,.14)'; x.fillRect(0, y(hi), W, y(lo) - y(hi));
+    x.strokeStyle = 'rgba(124,154,110,.5)'; x.setLineDash([3,4]); x.lineWidth = 1;
+    [lo,hi].forEach(v=>{ x.beginPath(); x.moveTo(0,y(v)); x.lineTo(W,y(v)); x.stroke(); }); x.setLineDash([]);
+    x.beginPath(); data.forEach((v,i)=> i ? x.lineTo(i*sx, y(v)) : x.moveTo(0, y(v)));
+    x.strokeStyle = '#1B3320'; x.lineWidth = 1.8; x.stroke();
+    const last = data[data.length-1]; x.fillStyle = '#B98A4A'; x.beginPath(); x.arc(W-3, y(last), 3.5, 0, 7); x.fill();
+  }
+  function drawMain(){ chart('mainChart', S.temp.h, 4, 8, 190); }
+
+  const ALERTS = [
+    { t:'Humedad elevada', d:'SHT31 · superó 85% por 12 minutos', ago:0, st:'activa', crit:false },
+    { t:'Puerta abierta más de 5 minutos', d:'Reed Switch · apertura prolongada', ago:2, st:'resuelta', crit:false },
+    { t:'Temperatura estabilizada', d:'DHT22 · volvió al rango 4 – 8 °C', ago:4, st:'resuelta', crit:false },
+    { t:'CO2 en rango normal', d:'MH-Z19B · bajó de 600 ppm tras ventilar', ago:6, st:'resuelta', crit:false },
+    { t:'Temperatura fuera de rango', d:'DHT22 · llegó a 10.2 °C por falla de sellado', ago:26, st:'resuelta', crit:true },
+    { t:'Maduración acelerada', d:'TGS2602 · etileno en 112 ppb', ago:50, st:'resuelta', crit:true }
+  ];
+  function hhmm(hoursAgo){ const d = new Date(Date.now() - hoursAgo*3600e3); return hoursAgo >= 24 ? d.toLocaleDateString('es-CR',{day:'numeric',month:'short'}) + ' ' + d.toLocaleTimeString('es-CR',{hour:'2-digit',minute:'2-digit'}) : d.toLocaleTimeString('es-CR',{hour:'2-digit',minute:'2-digit'}); }
+  function stClass(a){ return a.crit && a.st === 'activa' ? 'bad' : a.st === 'activa' ? 'warn' : 'ok'; }
+  function alertRow(a){ const c = stClass(a); return `<div class="alert-row" data-st="${a.st}" data-crit="${a.crit}"><span class="ring c-${c}" style="margin:0"></span><div><div class="t">${a.t}</div><div class="d">${a.d}</div></div><span class="time">${hhmm(a.ago)}</span><span class="pill ${c}">${a.st === 'activa' ? 'Activa' : 'Resuelta'}</span></div>`; }
+  function paintAlerts(){
+    $('recentAlerts').innerHTML = ALERTS.slice(0,4).map(alertRow).join('');
+    $('alertList').innerHTML = ALERTS.map(alertRow).join('');
+    applyFilter(curFilter);
+  }
+  let curFilter = 'todas';
+  function applyFilter(f){
+    curFilter = f;
+    $('alertList').querySelectorAll('.alert-row').forEach(r=>{
+      const show = f === 'todas' || (f === 'critica' ? r.dataset.crit === 'true' : r.dataset.st === f);
+      r.style.display = show ? '' : 'none';
+    });
+  }
+  $('filters').querySelectorAll('.fbtn').forEach(b=>b.onclick=()=>{ $('filters').querySelectorAll('.fbtn').forEach(x=>x.classList.toggle('active', x===b)); applyFilter(b.dataset.f); });
+
+  function paintDoor(){
+    const rows = [[3,4],[5,2],[8,9]];
+    $('doorTable').innerHTML = rows.map((r,i)=>`<tr><td>Apertura ${i+1}</td><td>${hhmm(r[0])}</td><td>${r[1]} min</td></tr>`).join('');
+    $('doorLast').textContent = hhmm(3);
+  }
+
+  function tick(){
+    const step = (s, a, lo, hi) => { s.v = Math.max(lo, Math.min(hi, s.v + (Math.random()-.5)*a)); s.h.push(s.v); if (s.h.length > 48) s.h.shift(); s.min = Math.min(s.min, s.v); s.max = Math.max(s.max, s.v); };
+    step(S.temp, .25, 3.4, 9.2); step(S.hum, 1.2, 66, 90); step(S.co2, 14, 380, 700); step(S.eth, 3, 5, 120);
+    if (Math.random() < .03) door = !door;
+    const now = new Date(), time = now.toLocaleTimeString('es-CR',{hour:'2-digit',minute:'2-digit'});
+    $('clock').textContent = time;
+    document.querySelectorAll('.upd').forEach(e=>e.textContent = now.toLocaleTimeString('es-CR'));
+
+    const map = { temp:['mT','bT','sT'], hum:['mH','bH','sH'], co2:['mC','bC','sC'], eth:['mE','bE','sE'] };
+    const states = {};
+    SENSORS.forEach(s=>{
+      const v = S[s.k].v, st = status(s.k, v); states[s.k] = st;
+      const txt = v.toFixed(s.dec);
+      $(map[s.k][0]).textContent = txt; $('sv-'+s.k).textContent = txt;
+      const b = $(map[s.k][1]), r = S[s.k];
+      b.style.width = Math.max(6, Math.min(100, (v - (r.lo - (r.hi-r.lo)*.5)) / ((r.hi-r.lo)*2) * 100)) + '%';
+      b.style.background = st[0] === 'ok' ? '#7C9A6E' : st[0] === 'warn' ? '#B98A4A' : '#A2452F';
+      setPill($(map[s.k][2]), st); setPill($('ss-'+s.k), st);
+      $('smin-'+s.k).textContent = r.min.toFixed(s.dec) + ' ' + r.unit; $('smax-'+s.k).textContent = r.max.toFixed(s.dec) + ' ' + r.unit;
+      chart('sc-'+s.k, r.h, r.lo, r.hi, 70);
+    });
+    const dSt = door ? ['warn','Abierta'] : ['ok','Sellada'];
+    $('mD').textContent = door ? 'Abierta' : 'Cerrada'; setPill($('sD'), dSt);
+    $('sv-door').textContent = door ? 'Abierta' : 'Cerrada'; setPill($('ss-door'), door ? ['warn','Abierta'] : ['ok','Cerrada']);
+    $('tMin').textContent = S.temp.min.toFixed(1) + ' °C'; $('tMax').textContent = S.temp.max.toFixed(1) + ' °C';
+
+    const all = Object.values(states); const worst = all.find(s=>s[0]==='bad') || all.find(s=>s[0]==='warn') || (door ? ['warn'] : null);
+    const ring = $('stRing');
+    if (!worst) { ring.className = 'ring c-ok'; $('stText').textContent = 'Óptimo'; $('stDesc').textContent = 'Todos los parámetros en rango'; }
+    else {
+      const key = Object.keys(states).find(k=>states[k][0]===worst[0]);
+      const names = { temp:'Temperatura', hum:'Humedad', co2:'CO2', eth:'Etileno' };
+      ring.className = 'ring c-' + worst[0];
+      $('stText').textContent = worst[0] === 'bad' ? 'Atención' : 'Revisar';
+      $('stDesc').textContent = key ? names[key] + ': ' + states[key][1].toLowerCase() : 'La puerta está abierta';
+    }
+    if (document.querySelector('#p-dashboard.active')) drawMain();
+  }
+  let simStarted = false;
+  function startSim(){ if (simStarted) return; simStarted = true; paintAlerts(); paintDoor(); tick(); setInterval(tick, 3000); window.addEventListener('resize', ()=>{ drawMain(); }); }
+
+  // ---------- SESSION RESTORE ----------
+  (async function(){
+    if (LIVE) { const { data: { session } } = await sb.auth.getSession(); if (session) await loadProfile(); }
+    else if (sessionStorage.getItem('zocaDemo')) { user = JSON.parse(JSON.stringify(DEMO)); enterApp(); }
+  })();
+})();
+</script>
+</body>
+</html>
